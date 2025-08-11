@@ -1,13 +1,16 @@
-# Wallflower 🌸
+# Wallflower
 
-A web application with Express APIs and comprehensive PACT contract testing.
-
-## Overview
-
-Wallflower is a modern web application built with Node.js and Express, featuring a robust API layer with comprehensive contract testing using PACT. The application includes user management, posts, and authentication endpoints with full test coverage.
+A full-stack travel planning application with React frontend, Express.js backend, and comprehensive testing frameworks.
 
 ## Features
 
+### Frontend (React Application)
+- **Trip Planning**: Interactive form for planning travel itineraries
+- **Responsive Design**: Works seamlessly across desktop, tablet, and mobile devices
+- **Modern UI**: Clean, intuitive interface built with React and TypeScript
+- **Playwright E2E Testing**: Comprehensive smoke tests across multiple browsers
+
+### Backend (Express.js APIs)
 - **RESTful APIs**: Users, Posts, and Authentication endpoints
 - **PACT Contract Testing**: Comprehensive consumer and provider tests
 - **Express.js Backend**: Modern Node.js server with middleware
@@ -16,184 +19,169 @@ Wallflower is a modern web application built with Node.js and Express, featuring
 - **Security**: Helmet.js for security headers, CORS support
 - **Logging**: Morgan for HTTP request logging
 
-## Quick Start
+## Project Structure
+
+```
+wallflower/
+├── client/                 # React application
+│   ├── src/               # Source code
+│   │   ├── App.tsx        # Main application component
+│   │   ├── App.css        # Application styles
+│   │   ├── index.tsx      # React entry point
+│   │   └── setupTests.ts  # Test configuration
+│   ├── tests/             # Playwright E2E tests
+│   │   ├── fixtures/      # Test utilities and fixtures
+│   │   └── smoke/         # Smoke test suite
+│   ├── public/            # Static assets
+│   ├── package.json       # Dependencies and scripts
+│   └── playwright.config.ts # Playwright configuration
+├── api/                   # Express.js API routes
+├── tests/pact/            # PACT contract tests
+├── server.js              # Express server
+└── .github/workflows/     # CI/CD workflows
+```
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js 16+
 - npm or yarn
 
 ### Installation
 
+1. Clone the repository:
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd wallflower
-
-# Install dependencies
-npm install
-
-# Copy environment configuration
-cp .env.example .env
-
-# Start the development server
-npm run dev
 ```
 
+2. Install backend dependencies:
+```bash
+npm install
+```
+
+3. Install frontend dependencies:
+```bash
+cd client && npm install
+```
+
+4. Install Playwright browsers (for E2E testing):
+```bash
+cd client && npm run playwright:install
+```
+
+5. Copy environment configuration:
+```bash
+cp .env.example .env
+```
+
+### Development
+
+#### Backend Server
+```bash
+# Start the Express.js development server
+npm run dev
+```
 The server will start on `http://localhost:3000`
 
-### API Endpoints
-
-#### Health Check
-- `GET /health` - Server health status
-- `GET /` - API information
-
-#### Users API
-- `GET /api/users` - Get all users (with pagination)
-- `GET /api/users/:id` - Get user by ID
-- `POST /api/users` - Create new user
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
-
-#### Posts API
-- `GET /api/posts` - Get all posts (with pagination)
-- `GET /api/posts/:id` - Get post by ID
-- `POST /api/posts` - Create new post
-- `PUT /api/posts/:id` - Update post
-- `DELETE /api/posts/:id` - Delete post
-
-#### Authentication API
-- `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/profile` - Get user profile (requires auth)
-
-## PACT Contract Testing
-
-This project includes comprehensive PACT contract tests to ensure API reliability and prevent breaking changes between frontend and backend.
-
-### What is PACT?
-
-PACT is a contract testing framework that:
-- Defines contracts between service consumers (frontend) and providers (backend)
-- Generates contracts from consumer tests
-- Verifies that providers fulfill the contracts
-- Prevents breaking changes between services
-
-### Running PACT Tests
-
+#### Frontend Application
 ```bash
-# Run all PACT tests
-npm run test:pact
+# Start the React development server
+cd client && npm start
+```
+The React app will start on `http://localhost:3000`
 
-# Run consumer tests only
-npm run test:pact:consumer
+## Testing
 
-# Run provider verification only
-npm run test:pact:provider
+### Unit Tests (Jest + React Testing Library)
 
-# Use the custom test runner
-node scripts/run-pact-tests.js
+Run unit tests:
+```bash
+npm test
+```
+
+Run tests in watch mode:
+```bash
+npm test -- --watch
+```
+
+### End-to-End Tests (Playwright)
+
+Run all E2E tests:
+```bash
+npm run test:e2e
+```
+
+Run tests in headed mode (see browser):
+```bash
+npm run test:e2e:headed
+```
+
+Run tests with UI mode:
+```bash
+npm run test:e2e:ui
+```
+
+Debug tests:
+```bash
+npm run test:e2e:debug
 ```
 
 ### Test Structure
 
-```
-tests/pact/
-├── consumer/           # Consumer contract tests
-│   ├── users.consumer.pact.test.js
-│   ├── posts.consumer.pact.test.js
-│   └── auth.consumer.pact.test.js
-├── provider/           # Provider verification tests
-│   └── provider.verification.test.js
-├── templates/          # Templates for new API tests
-│   └── api.consumer.template.js
-└── README.md          # Detailed PACT documentation
-```
+#### Smoke Tests
+Located in `client/tests/smoke/`, these tests verify core functionality:
 
-### Adding New API Tests
+- **app-loads.spec.ts**: Application loading and basic functionality
+- **navigation.spec.ts**: Navigation between pages and routing
+- **trip-planner.spec.ts**: Trip planning form functionality
+- **ui-components.spec.ts**: UI component rendering and styling
+- **console-errors.spec.ts**: JavaScript errors and performance
 
-1. Copy the template:
-   ```bash
-   cp tests/pact/templates/api.consumer.template.js tests/pact/consumer/your-api.consumer.pact.test.js
-   ```
+#### Test Utilities
+- **fixtures/base.ts**: Common test utilities and custom fixtures
 
-2. Customize for your API:
-   - Update API name and paths
-   - Modify test cases
-   - Add provider states
-   - Use unique port numbers
+### Continuous Integration
 
-3. Update provider verification to include new states
+The project includes GitHub Actions workflows that:
+- Run Playwright tests on push/PR to main/develop branches
+- Test across multiple browsers (Chromium, Firefox, WebKit)
+- Generate test reports and artifacts
+- Support both desktop and mobile viewports
 
-## Development
+## Available Scripts
 
-### Available Scripts
+In the `client` directory:
 
-```bash
-npm start          # Start production server
-npm run dev        # Start development server with nodemon
-npm test           # Run all tests
-npm run test:pact  # Run PACT contract tests
-```
+- `npm start` - Runs the app in development mode
+- `npm test` - Launches the test runner (Jest)
+- `npm run build` - Builds the app for production
+- `npm run test:e2e` - Runs Playwright tests
+- `npm run test:e2e:headed` - Runs Playwright tests in headed mode
+- `npm run test:e2e:ui` - Opens Playwright UI mode
+- `npm run test:e2e:debug` - Runs Playwright in debug mode
+- `npm run playwright:install` - Installs Playwright browsers
 
-### Project Structure
+## Browser Support
 
-```
-wallflower/
-├── api/                    # API route modules
-│   ├── index.js           # Main API router
-│   ├── users.js           # Users endpoints
-│   ├── posts.js           # Posts endpoints
-│   └── auth.js            # Authentication endpoints
-├── tests/                 # Test files
-│   ├── pact/             # PACT contract tests
-│   └── setup.js          # Test configuration
-├── scripts/              # Utility scripts
-│   └── run-pact-tests.js # PACT test runner
-├── pacts/                # Generated PACT contracts
-├── logs/                 # Log files
-├── server.js             # Main server file
-├── package.json          # Dependencies and scripts
-└── README.md             # This file
-```
-
-## Testing Philosophy
-
-This project emphasizes contract testing to ensure reliable API communication:
-
-1. **Consumer Tests**: Define what the frontend expects from the API
-2. **Provider Tests**: Verify that the API meets consumer expectations
-3. **Contract Generation**: Automatic generation of contract specifications
-4. **Continuous Verification**: Prevent breaking changes during development
+The application is tested on:
+- Chrome/Chromium (latest)
+- Firefox (latest)
+- Safari/WebKit (latest)
+- Mobile Chrome (Pixel 5)
+- Mobile Safari (iPhone 12)
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Add your changes with appropriate tests
-4. Ensure all PACT tests pass
-5. Submit a pull request
-
-### Adding New APIs
-
-When adding new APIs:
-
-1. Create the API endpoint in the `api/` directory
-2. Add consumer PACT tests using the provided template
-3. Update provider verification with new states
-4. Document the new endpoints in this README
-5. Test thoroughly with both unit and contract tests
-
-## Environment Variables
-
-See `.env.example` for available configuration options:
-
-- `PORT`: Server port (default: 3000)
-- `NODE_ENV`: Environment (development/production)
-- `PACT_BROKER_BASE_URL`: PACT Broker URL for sharing contracts
-- `LOG_LEVEL`: Logging level for PACT tests
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests to ensure everything works (`npm test && npm run test:e2e`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
 ## License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License.
