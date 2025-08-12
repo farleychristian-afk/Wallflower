@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import './App.css';
+import SearchResults from './pages/SearchResults';
 
 // Components
 const Header: React.FC = () => (
@@ -13,6 +14,7 @@ const Header: React.FC = () => (
         <Link to="/" className="nav-link" data-testid="nav-home">Home</Link>
         <Link to="/planner" className="nav-link" data-testid="nav-planner">Trip Planner</Link>
         <Link to="/about" className="nav-link" data-testid="nav-about">About</Link>
+        <Link to="/search" className="nav-link" data-testid="nav-search">Search</Link>
       </nav>
     </div>
   </header>
@@ -127,6 +129,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Home />} />
             <Route path="/planner" element={<TripPlanner />} />
             <Route path="/about" element={<About />} />
+            <Route path="/search" element={<SearchResults />} />
           </Routes>
         </main>
       </div>
