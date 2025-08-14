@@ -11,6 +11,47 @@ router.get('/', (req, res) => {
   });
 });
 
+// Helper to call OpenAI with timeout and one retry on AbortError/network errors
+async function callOpenAIWithRetry(body, timeoutMs) {
+  const url = 'https://api.openai.com/v1/chat/completions';
+
+  const doCall = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      const ct = res.headers.get('content-type') || '';
+      const raw = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}\n${raw.slice(0, 400)}`);
+      if (!ct.includes('application/json')) throw new Error(`Non-JSON response:\n${raw.slice(0, 400)}`);
+      return JSON.parse(raw);
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  try {
+    return await doCall();
+  } catch (e) {
+    const msg = (e && e.message) ? String(e.message) : '';
+    const name = (e && e.name) ? String(e.name) : '';
+    const isAbortOrNet = name === 'AbortError' || /aborted|AbortError|network|ECONN|ETIMEDOUT|timeout/i.test(msg);
+    if (isAbortOrNet) {
+      await new Promise(r => setTimeout(r, 2000));
+      return await doCall();
+    }
+    throw e;
+  }
+}
+
 // Plan endpoint that calls OpenAI and returns an itinerary in the expected shape
 router.post('/plan', async (req, res) => {
   try {
@@ -27,7 +68,7 @@ router.post('/plan', async (req, res) => {
 
     const numDays = Math.max(1, Number(days) || 1);
 
-    // Build prompt
+    // Prompt asking for strict JSON
     const prompt = `You are a travel planner. Create a detailed ${numDays}-day itinerary for a trip to ${destination}.
 Trip dates are from ${startDate} to ${endDate}. Interests: ${interests.length ? interests.join(', ') : 'general'}.
 Return ONLY valid JSON matching this exact schema (no markdown, no prose):
@@ -44,55 +85,33 @@ Return ONLY valid JSON matching this exact schema (no markdown, no prose):
   ]
 }`;
 
-    // Timeout using AbortController
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS) || 45000;
 
-    const fetchRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a helpful travel planning assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        response_format: { type: 'json_object' } // enforce JSON
-      }),
-      signal: controller.signal,
-    });
+    const data = await callOpenAIWithRetry({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a helpful travel planning assistant.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: 'json_object' }
+    }, timeoutMs);
 
-    clearTimeout(timeout);
-
-    const ct = fetchRes.headers.get('content-type') || '';
-    const raw = await fetchRes.text();
-
-    if (!fetchRes.ok) {
-      throw new Error(`HTTP ${fetchRes.status} ${fetchRes.statusText}\n${raw.slice(0, 400)}`);
-    }
-    if (!ct.includes('application/json')) {
-      throw new Error(`Non-JSON response:\n${raw.slice(0, 400)}`);
-    }
-
-    const data = JSON.parse(raw);
     const content = data?.choices?.[0]?.message?.content || '{}';
 
-    let itinerary;
+    let itineraryCandidate;
     try {
-      itinerary = JSON.parse(content);
+      itineraryCandidate = JSON.parse(content);
     } catch (e) {
       throw new Error(`Failed to parse model content as JSON:\n${String(content).slice(0, 400)}`);
     }
 
     // Minimal validation/coercion
-    if (!itinerary || typeof itinerary !== 'object' || !Array.isArray(itinerary.days)) {
+    if (!itineraryCandidate || typeof itineraryCandidate !== 'object' || !Array.isArray(itineraryCandidate.days)) {
       throw new Error('Model response missing required itinerary.days array');
     }
 
+    let itinerary = { ...itineraryCandidate };
     itinerary.days = itinerary.days.map((d, idx) => {
       const day = Number(d.day ?? idx + 1);
       const date = (d.date || startDate);
@@ -117,9 +136,17 @@ Return ONLY valid JSON matching this exact schema (no markdown, no prose):
     return res.json({ success: true, itinerary });
   } catch (err) {
     const message = err && err.message ? String(err.message) : 'Unknown error';
+    const name = err && err.name ? String(err.name) : '';
+    const isAbort = name === 'AbortError' || /aborted|AbortError|timed out|ETIMEDOUT/i.test(message);
+    if (isAbort) {
+      const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS) || 45000;
+      return res.status(504).json({ success: false, error: `OpenAI request timed out after ${Math.round(timeoutMs/1000)}s. Please try again.` });
+    }
     console.error('Trip planner error:', message);
     return res.status(500).json({ success: false, error: 'Failed to generate itinerary', details: message.slice(0, 400) });
   }
 });
+
+module.exports = router;
 
 module.exports = router;
