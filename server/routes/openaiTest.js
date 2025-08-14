@@ -41,11 +41,12 @@ router.post('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('OpenAI test error:', error);
-    res.status(500).json({ 
+    const message = error && error.message ? String(error.message) : 'Unknown error';
+    console.error('OpenAI test error:', message);
+    res.status(500).json({
       success: false,
       error: 'Failed to call OpenAI API',
-      details: error.message 
+      details: message.slice(0, 400)
     });
   }
 });
