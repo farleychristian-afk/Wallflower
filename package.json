@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "nodemon server/index.js",
+    "dev": "nodemon --watch server server/index.js",
     "test": "jest",
     "test:pact": "jest --testPathPattern=pact",
     "test:pact:consumer": "jest --testPathPattern=consumer",
