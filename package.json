@@ -4,8 +4,8 @@
   "description": "Wallflower web application with Express APIs",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js",
     "test": "jest",
     "test:pact": "jest --testPathPattern=pact",
     "test:pact:consumer": "jest --testPathPattern=consumer",
