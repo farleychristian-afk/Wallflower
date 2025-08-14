@@ -11,8 +11,8 @@ router.get('/', (req, res) => {
   });
 });
 
-// Plan endpoint that returns an itinerary shape expected by the client
-router.post('/plan', (req, res) => {
+// Plan endpoint that calls OpenAI and returns an itinerary in the expected shape
+router.post('/plan', async (req, res) => {
   try {
     const { destination = 'Anywhere', startDate, endDate, days, interests = [] } = req.body || {};
 
@@ -21,51 +21,104 @@ router.post('/plan', (req, res) => {
       return res.status(400).json({ success: false, error: 'destination, startDate and endDate are required' });
     }
 
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ success: false, error: 'Server missing OPENAI_API_KEY' });
+    }
+
     const numDays = Math.max(1, Number(days) || 1);
-    const start = new Date(startDate + 'T00:00:00');
 
-    // Build itinerary days with simple placeholder activities
-    const itineraryDays = Array.from({ length: numDays }).map((_, idx) => {
-      const current = new Date(start);
-      current.setDate(start.getDate() + idx);
-      const isoDate = current.toISOString().slice(0, 10);
+    // Build prompt
+    const prompt = `You are a travel planner. Create a detailed ${numDays}-day itinerary for a trip to ${destination}.
+Trip dates are from ${startDate} to ${endDate}. Interests: ${interests.length ? interests.join(', ') : 'general'}.
+Return ONLY valid JSON matching this exact schema (no markdown, no prose):
+{
+  "title": string,
+  "days": [
+    {
+      "day": number,
+      "date": "YYYY-MM-DD",
+      "activities": [
+        { "time": "HH:mm", "activity": string, "location": string, "notes": string }
+      ]
+    }
+  ]
+}`;
 
+    // Timeout using AbortController
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const fetchRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a helpful travel planning assistant.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' } // enforce JSON
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    const ct = fetchRes.headers.get('content-type') || '';
+    const raw = await fetchRes.text();
+
+    if (!fetchRes.ok) {
+      throw new Error(`HTTP ${fetchRes.status} ${fetchRes.statusText}\n${raw.slice(0, 400)}`);
+    }
+    if (!ct.includes('application/json')) {
+      throw new Error(`Non-JSON response:\n${raw.slice(0, 400)}`);
+    }
+
+    const data = JSON.parse(raw);
+    const content = data?.choices?.[0]?.message?.content || '{}';
+
+    let itinerary;
+    try {
+      itinerary = JSON.parse(content);
+    } catch (e) {
+      throw new Error(`Failed to parse model content as JSON:\n${String(content).slice(0, 400)}`);
+    }
+
+    // Minimal validation/coercion
+    if (!itinerary || typeof itinerary !== 'object' || !Array.isArray(itinerary.days)) {
+      throw new Error('Model response missing required itinerary.days array');
+    }
+
+    itinerary.days = itinerary.days.map((d, idx) => {
+      const day = Number(d.day ?? idx + 1);
+      const date = (d.date || startDate);
+      const activities = Array.isArray(d.activities) ? d.activities : [];
       return {
-        day: idx + 1,
-        date: isoDate,
-        activities: [
-          {
-            time: '09:00',
-            activity: `Explore ${destination} highlights`,
-            location: destination,
-            notes: interests.length ? `Focus: ${interests.join(', ')}` : 'General sightseeing'
-          },
-          {
-            time: '13:00',
-            activity: 'Local cuisine lunch',
-            location: 'Recommended bistro',
-            notes: 'Try popular regional dishes'
-          },
-          {
-            time: '16:00',
-            activity: 'Afternoon activity',
-            location: 'City center',
-            notes: 'Museums, parks, or shopping'
-          }
-        ]
+        day,
+        date: String(date).slice(0, 10),
+        activities: activities.map(a => ({
+          time: a.time || '09:00',
+          activity: a.activity || 'Activity',
+          location: a.location || destination,
+          notes: a.notes || ''
+        }))
       };
     });
 
-    const itinerary = {
-      title: `Trip to ${destination} (${numDays} day${numDays > 1 ? 's' : ''})` ,
-      days: itineraryDays
-    };
+    // Title fallback
+    if (!itinerary.title) {
+      itinerary.title = `Trip to ${destination} (${numDays} day${numDays > 1 ? 's' : ''})`;
+    }
 
     return res.json({ success: true, itinerary });
   } catch (err) {
     const message = err && err.message ? String(err.message) : 'Unknown error';
     console.error('Trip planner error:', message);
-    return res.status(500).json({ success: false, error: 'Failed to generate itinerary', details: message });
+    return res.status(500).json({ success: false, error: 'Failed to generate itinerary', details: message.slice(0, 400) });
   }
 });
 
