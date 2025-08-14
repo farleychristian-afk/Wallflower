@@ -1,0 +1,228 @@
+{
+  "consumer": {
+    "name": "wallflower-frontend"
+  },
+  "interactions": [
+    {
+      "description": "a request for user profile without token",
+      "providerState": "any state",
+      "request": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/auth/profile"
+      },
+      "response": {
+        "body": {
+          "error": "Unauthorized",
+          "message": "Authentication token required"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 401
+      }
+    },
+    {
+      "description": "a valid registration request",
+      "providerState": "no user with email newuser@example.com exists",
+      "request": {
+        "body": {
+          "email": "newuser@example.com",
+          "name": "New User",
+          "password": "newpassword123"
+        },
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/auth/register"
+      },
+      "response": {
+        "body": {
+          "message": "Registration successful",
+          "user": {
+            "email": "newuser@example.com",
+            "id": 3,
+            "name": "New User"
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 201
+      }
+    },
+    {
+      "description": "a request for all posts",
+      "providerState": "posts exist",
+      "request": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/posts"
+      },
+      "response": {
+        "body": {
+          "pagination": {
+            "limit": 10,
+            "page": 1,
+            "total": 1,
+            "totalPages": 1
+          },
+          "posts": [
+            {
+              "authorId": 1,
+              "content": "This is the first post on our platform.",
+              "createdAt": "2023-01-01T00:00:00Z",
+              "id": 1,
+              "title": "Welcome to Wallflower",
+              "updatedAt": "2023-01-01T00:00:00Z"
+            }
+          ]
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create a new post",
+      "providerState": "user with ID 1 exists",
+      "request": {
+        "body": {
+          "authorId": 1,
+          "content": "This is a test post content.",
+          "title": "Test Post"
+        },
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/posts"
+      },
+      "response": {
+        "body": {
+          "message": "Post created successfully",
+          "post": {
+            "authorId": 1,
+            "content": "This is a test post content.",
+            "createdAt": "2023-08-11T10:00:00Z",
+            "id": 3,
+            "title": "Test Post",
+            "updatedAt": "2023-08-11T10:00:00Z"
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 201
+      }
+    },
+    {
+      "description": "a request for user with ID 999",
+      "providerState": "user with ID 999 does not exist",
+      "request": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/users/999"
+      },
+      "response": {
+        "body": {
+          "error": "User not found",
+          "message": "User with ID 999 does not exist"
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 404
+      }
+    },
+    {
+      "description": "a valid login request",
+      "providerState": "user with email john@example.com exists",
+      "request": {
+        "body": {
+          "email": "john@example.com",
+          "password": "password123"
+        },
+        "headers": {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/auth/login"
+      },
+      "response": {
+        "body": {
+          "message": "Login successful",
+          "token": "mock-jwt-token-1-1691748000000",
+          "user": {
+            "email": "john@example.com",
+            "id": 1,
+            "name": "John Doe"
+          }
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for all users",
+      "providerState": "users exist",
+      "request": {
+        "headers": {
+          "Accept": "application/json"
+        },
+        "method": "GET",
+        "path": "/api/users"
+      },
+      "response": {
+        "body": {
+          "pagination": {
+            "limit": 10,
+            "page": 1,
+            "total": 1,
+            "totalPages": 1
+          },
+          "users": [
+            {
+              "email": "john@example.com",
+              "id": 1,
+              "name": "John Doe",
+              "role": "user"
+            }
+          ]
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      }
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "12.5.2"
+    },
+    "pactRust": {
+      "ffi": "0.4.20",
+      "models": "1.2.0"
+    },
+    "pactSpecification": {
+      "version": "2.0.0"
+    }
+  },
+  "provider": {
+    "name": "wallflower-api"
+  }
+}
